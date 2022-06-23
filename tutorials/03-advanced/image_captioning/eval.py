@@ -5,9 +5,11 @@ import argparse
 import pickle
 import os
 from torchvision import transforms
+from data_loader import get_loader
 from build_vocab import Vocabulary
 from model import EncoderCNN, DecoderRNN
 from PIL import Image
+from torch.nn.utils.rnn import pack_padded_sequence
 
 
 # Device configuration
@@ -34,6 +36,11 @@ def main(args):
     # Load vocabulary wrapper
     with open(args.vocab_path, 'rb') as f:
         vocab = pickle.load(f)
+
+    # Build data loader
+    data_loader = get_loader(args.image_dir, args.caption_path, vocab,
+                             transform, args.batch_size,
+                             shuffle=True, num_workers=args.num_workers)
 
     # Build models
     # eval mode (batchnorm uses moving mean/variance)
@@ -68,6 +75,19 @@ def main(args):
     except BaseException as e:
         print(e)
 
+    bleu_score = 0
+    for i, (images, captions, lengths) in enumerate(data_loader):
+
+        # Set mini-batch dataset
+        images = images.to(device)
+        captions = captions.to(device)
+        targets = pack_padded_sequence(captions, lengths, batch_first=True)[0]
+
+        # Forward, backward and optimize
+        with torch.no_grad():
+            features = encoder(images)
+            outputs = decoder(features, captions, lengths)
+
     # Prepare an image
     image = load_image(args.image, transform)
     image_tensor = image.to(device)
@@ -100,18 +120,31 @@ if __name__ == '__main__':
     parser.add_argument(
         '--encoder_path',
         type=str,
-        default='models/encoder-5-3000.pkl',
+        default='models/encoder-4-3200.ckpt',
         help='path for trained encoder')
     parser.add_argument(
         '--decoder_path',
         type=str,
-        default='models/decoder-5-3000.pkl',
+        default='models/decoder-4-3200.ckpt',
         help='path for trained decoder')
     parser.add_argument(
         '--vocab_path',
         type=str,
         default='data/vocab.pkl',
         help='path for vocabulary wrapper')
+    parser.add_argument(
+        '--image_dir',
+        type=str,
+        default='data/resized2014',
+        help='directory for resized images')
+    parser.add_argument(
+        '--caption_path',
+        type=str,
+        default='data/annotations/captions_val2014.json',
+        help='path for train annotation json file')
+    parser.add_argument('--num_epochs', type=int, default=5)
+    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--num_workers', type=int, default=2)
 
     # Model parameters (should be same as paramters in train.py)
     parser.add_argument(
