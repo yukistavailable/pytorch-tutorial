@@ -73,9 +73,8 @@ def main(args):
     image_tensor = image.to(device)
 
     # Generate an caption from the image
-    with torch.no_grad():
-        feature = encoder(image_tensor)
-        sampled_ids = decoder.sample(feature)
+    feature = encoder(image_tensor)
+    sampled_ids = decoder.sample(feature)
     # (1, max_seq_length) -> (max_seq_length)
     sampled_ids = sampled_ids[0].cpu().numpy()
 
