@@ -10,6 +10,7 @@ from build_vocab import Vocabulary
 from model import EncoderCNN, DecoderRNN
 from PIL import Image
 from torch.nn.utils.rnn import pack_padded_sequence
+from torchtext.data.metrics import bleu_score
 
 
 # Device configuration
@@ -24,6 +25,12 @@ def load_image(image_path, transform=None):
         image = transform(image).unsqueeze(0)
 
     return image
+
+
+def split_before_end(output):
+    for i in range(len(output)):
+        if output[i] == 2:
+            return output[1:i]
 
 
 def main(args):
@@ -75,7 +82,8 @@ def main(args):
     except BaseException as e:
         print(e)
 
-    bleu_score = 0
+    total_bleu_score = 0
+    count = 0
     for i, (images, captions, lengths) in enumerate(data_loader):
 
         # Set mini-batch dataset
@@ -86,37 +94,22 @@ def main(args):
         # Forward, backward and optimize
         with torch.no_grad():
             features = encoder(images)
-            outputs = decoder(features, captions, lengths)
-
-    # Prepare an image
-    image = load_image(args.image, transform)
-    image_tensor = image.to(device)
-
-    # Generate an caption from the image
-    feature = encoder(image_tensor)
-    sampled_ids = decoder.sample(feature)
-    # (1, max_seq_length) -> (max_seq_length)
-    sampled_ids = sampled_ids[0].cpu().numpy()
-
-    # Convert word_ids to words
-    sampled_caption = []
-    for word_id in sampled_ids:
-        word = vocab.idx2word[word_id]
-        sampled_caption.append(word)
-        if word == '<end>':
-            break
-    sentence = ' '.join(sampled_caption)
-
-    # Print out the image and the generated caption
-    print(sentence)
-    image = Image.open(args.image)
-    plt.imshow(np.asarray(image))
+            outputs = decoder.sample(features)
+        tmp = 0
+        for o, c in zip(outputs, captions):
+            o = split_before_end(o)
+            c = split_before_end(c)
+            if o is not None and c is not None:
+                o = [vocab.idx2word[int(_o)] for _o in o]
+                c = [vocab.idx2word[int(_c)] for _c in c]
+                tmp += bleu_score([o], [c])
+                count += 1
+        total_bleu_score += tmp
+    print(total_bleu_score / count)
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--image', type=str, required=True,
-                        help='input image for generating caption')
     parser.add_argument(
         '--encoder_path',
         type=str,
@@ -135,7 +128,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--image_dir',
         type=str,
-        default='data/resized2014',
+        default='data/resizedval2014',
         help='directory for resized images')
     parser.add_argument(
         '--caption_path',
