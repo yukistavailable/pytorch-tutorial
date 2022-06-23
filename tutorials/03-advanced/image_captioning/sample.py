@@ -101,12 +101,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--encoder_path',
         type=str,
-        default='models/encoder-4-3200.ckpt',
+        default='models/encoder-10-3200.ckpt',
         help='path for trained encoder')
     parser.add_argument(
         '--decoder_path',
         type=str,
-        default='models/decoder-4-3200.ckpt',
+        default='models/decoder-10-3200.ckpt',
         help='path for trained decoder')
     parser.add_argument(
         '--vocab_path',
