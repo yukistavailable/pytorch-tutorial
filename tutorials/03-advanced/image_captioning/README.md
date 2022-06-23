@@ -37,6 +37,7 @@ chmod +x download.sh
 #### 3. Preprocessing
 
 ```bash
+python -c "import nltk; nltk.download('all')"
 python build_vocab.py   
 python resize.py
 ```

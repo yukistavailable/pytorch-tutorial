@@ -3,3 +3,5 @@ nltk
 numpy
 Pillow
 argparse
+torch=1.7.1
+torchvision=0.1.6
