@@ -32,6 +32,13 @@ class CocoValDataset(data.Dataset):
             ann_id = a['id']
             img_id = a['image_id']
             self.anns[img_id].append(ann_id)
+
+        tmp_ids = []
+        for id in self.ids:
+            if len(self.anns[id]) > 0:
+                tmp_ids.append(id)
+
+        self.ids = tmp_ids
         self.vocab = vocab
         self.transform = transform
 
@@ -41,7 +48,7 @@ class CocoValDataset(data.Dataset):
         vocab = self.vocab
         img_id = self.ids[index]
         ann_ids = self.anns[img_id]
-        captions = [coco.anns[ann_id]['caption'] for ann_id in ann_ids]
+        captions = [self.coco.anns[ann_id]['caption'] for ann_id in ann_ids]
         path = coco.loadImgs(img_id)[0]['file_name']
 
         image = Image.open(os.path.join(self.root, path)).convert('RGB')
@@ -50,15 +57,23 @@ class CocoValDataset(data.Dataset):
 
         # Convert caption (string) to word ids.
         targets = []
+        max_len = 0
         for caption in captions:
             tokens = nltk.tokenize.word_tokenize(str(caption).lower())
             caption = []
             caption.append(vocab('<start>'))
             caption.extend([vocab(token) for token in tokens])
             caption.append(vocab('<end>'))
-            target = torch.Tensor(caption)
-            targets.append(target)
-        return image, torch.Tensor(targets)
+            # target = torch.Tensor(caption)
+            if len(caption) > max_len:
+                max_len = len(caption)
+            targets.append(caption)
+        padded_targets = []
+        for target in targets:
+            if len(target) < max_len:
+                target = target + [vocab('<end>')] * (max_len - len(target))
+            padded_targets.append(torch.Tensor(target))
+        return image, torch.stack(padded_targets)
 
     def __len__(self):
         return len(self.ids)
@@ -106,6 +121,39 @@ class CocoDataset(data.Dataset):
 
     def __len__(self):
         return len(self.ids)
+
+
+def collate_val_fn(data):
+    """Creates mini-batch tensors from the list of tuples (image, caption).
+
+    We should build custom collate_fn rather than using default collate_fn,
+    because merging caption (including padding) is not supported in default.
+
+    Args:
+        data: list of tuple (image, caption).
+            - image: torch tensor of shape (3, 256, 256).
+            - caption: torch tensor of shape (?); variable length.
+
+    Returns:
+        images: torch tensor of shape (batch_size, 3, 256, 256).
+        targets: torch tensor of shape (batch_size, padded_length).
+        lengths: list; valid length for each padded caption.
+    """
+    # Sort a data list by caption length (descending order).
+    data.sort(key=lambda x: len(x[1]), reverse=True)
+    images, captions = zip(*data)
+
+    # Merge images (from tuple of 3D tensor to 4D tensor).
+    images = torch.stack(images, 0)
+
+    # Merge captions (from tuple of 1D tensor to 2D tensor).
+    """
+    targets = torch.zeros(len(captions), max(lengths)).long()
+    for i, cap in enumerate(captions):
+        end = lengths[i]
+        targets[i, :end] = cap[:end]
+    """
+    return images, captions
 
 
 def collate_fn(data):
@@ -187,5 +235,5 @@ def get_val_loader(
                                               batch_size=batch_size,
                                               shuffle=shuffle,
                                               num_workers=num_workers,
-                                              collate_fn=collate_fn)
+                                              collate_fn=collate_val_fn)
     return data_loader

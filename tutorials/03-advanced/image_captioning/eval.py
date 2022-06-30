@@ -1,11 +1,12 @@
 import torch
+import nltk
 import matplotlib.pyplot as plt
 import numpy as np
 import argparse
 import pickle
 import os
 from torchvision import transforms
-from data_loader import get_loader
+from data_loader import get_loader, get_val_loader
 from build_vocab import Vocabulary
 from model import EncoderCNN, DecoderRNN
 from PIL import Image
@@ -29,7 +30,7 @@ def load_image(image_path, transform=None):
 
 def split_before_end(output):
     for i in range(len(output)):
-        if output[i] == 2:
+        if int(output[i]) == 2:
             return output[1:i]
 
 
@@ -45,9 +46,9 @@ def main(args):
         vocab = pickle.load(f)
 
     # Build data loader
-    data_loader = get_loader(args.image_dir, args.caption_path, vocab,
-                             transform, args.batch_size,
-                             shuffle=True, num_workers=args.num_workers)
+    data_loader = get_val_loader(args.image_dir, args.caption_path, vocab,
+                                 transform, args.batch_size,
+                                 shuffle=True, num_workers=args.num_workers)
 
     # Build models
     # eval mode (batchnorm uses moving mean/variance)
@@ -84,12 +85,13 @@ def main(args):
 
     total_bleu_score = 0
     count = 0
-    for i, (images, captions, lengths) in enumerate(data_loader):
+    for i, (images, captions) in enumerate(data_loader):
+        print(i)
 
         # Set mini-batch dataset
         images = images.to(device)
-        captions = captions.to(device)
-        targets = pack_padded_sequence(captions, lengths, batch_first=True)[0]
+        # captions = captions.to(device)
+        # targets = pack_padded_sequence(captions, lengths, batch_first=True)[0]
 
         # Forward, backward and optimize
         with torch.no_grad():
@@ -98,14 +100,19 @@ def main(args):
         tmp = 0
         for o, c in zip(outputs, captions):
             o = split_before_end(o)
-            c = split_before_end(c)
+            c = [split_before_end(_c) for _c in c]
             if o is not None and c is not None:
-                o = [vocab.idx2word[int(_o)] for _o in o]
-                c = [vocab.idx2word[int(_c)] for _c in c]
-                tmp += bleu_score([o], [c])
+                #o = [vocab.idx2word[int(_o)] for _o in o]
+                #c = [vocab.idx2word[int(_c)] for _c in c]
+                o = [str(int(_o)) for _o in o]
+                c = [[str(int(__c)) for __c in _c] for _c in c]
+                tmp += bleu_score([o], [c], 4)
                 count += 1
         total_bleu_score += tmp
+        print(tmp)
     print(total_bleu_score / count)
+    with open(f'bleu_score.txt', 'a') as f:
+        f.write(f'512-3000: {total_bleu_score / count}\n')
 
 
 if __name__ == '__main__':
@@ -113,12 +120,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--encoder_path',
         type=str,
-        default='models/encoder-4-3200.ckpt',
+        default='models/encoder512-10-3000.ckpt',
         help='path for trained encoder')
     parser.add_argument(
         '--decoder_path',
         type=str,
-        default='models/decoder-4-3200.ckpt',
+        default='models/decoder512-10-3000.ckpt',
         help='path for trained decoder')
     parser.add_argument(
         '--vocab_path',
@@ -143,7 +150,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--embed_size',
         type=int,
-        default=256,
+        default=512,
         help='dimension of word embedding vectors')
     parser.add_argument(
         '--hidden_size',
