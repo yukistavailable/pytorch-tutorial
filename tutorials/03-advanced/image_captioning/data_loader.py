@@ -10,7 +10,7 @@ from build_vocab import Vocabulary
 from pycocotools.coco import COCO
 
 
-class CocoDataset(data.Dataset):
+class CocoValDataset(data.Dataset):
     """COCO Custom Dataset compatible with torch.utils.data.DataLoader."""
 
     def __init__(self, root, json, vocab, transform=None):
@@ -64,7 +64,7 @@ class CocoDataset(data.Dataset):
         return len(self.ids)
 
 
-class CocoValDataset(data.Dataset):
+class CocoDataset(data.Dataset):
     """COCO Custom Dataset compatible with torch.utils.data.DataLoader."""
 
     def __init__(self, root, json, vocab, transform=None):
