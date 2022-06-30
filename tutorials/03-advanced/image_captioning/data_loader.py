@@ -58,7 +58,7 @@ class CocoValDataset(data.Dataset):
             caption.append(vocab('<end>'))
             target = torch.Tensor(caption)
             targets.append(target)
-        return image, targets
+        return image, torch.Tensor(targets)
 
     def __len__(self):
         return len(self.ids)
