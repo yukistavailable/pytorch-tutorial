@@ -101,12 +101,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--encoder_path',
         type=str,
-        default='models/encoder-10-3200.ckpt',
+        default='models/encoder512-10-3000.ckpt',
         help='path for trained encoder')
     parser.add_argument(
         '--decoder_path',
         type=str,
-        default='models/decoder-10-3200.ckpt',
+        default='models/decoder512-10-3000.ckpt',
         help='path for trained decoder')
     parser.add_argument(
         '--vocab_path',
@@ -118,7 +118,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--embed_size',
         type=int,
-        default=256,
+        default=512,
         help='dimension of word embedding vectors')
     parser.add_argument(
         '--hidden_size',
