@@ -45,6 +45,31 @@ def main(args):
         len(vocab),
         args.num_layers).to(device)
 
+    # Load the trained model parameters
+    try:
+        if args.encoder_path is not None:
+            if torch.cuda.is_available():
+                encoder.load_state_dict(torch.load(args.encoder_path))
+            else:
+                encoder.load_state_dict(
+                    torch.load(
+                        args.encoder_path,
+                        map_location=torch.device('cpu')))
+    except BaseException as e:
+        print(e)
+
+    try:
+        if args.decoder_path is not None:
+            if torch.cuda.is_available():
+                decoder.load_state_dict(torch.load(args.decoder_path))
+            else:
+                decoder.load_state_dict(
+                    torch.load(
+                        args.decoder_path,
+                        map_location=torch.device('cpu')))
+    except BaseException as e:
+        print(e)
+
     # Loss and optimizer
     criterion = nn.CrossEntropyLoss()
     params = list(decoder.parameters()) + \
@@ -86,6 +111,16 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--encoder_path',
+        type=str,
+        default=None,
+        help='path for trained encoder')
+    parser.add_argument(
+        '--decoder_path',
+        type=str,
+        default=None,
+        help='path for trained decoder')
     parser.add_argument(
         '--model_path',
         type=str,
