@@ -29,7 +29,6 @@ class EncoderCNNWithAttention(nn.Module):
         super(EncoderCNNWithAttention, self).__init__()
         resnet = models.resnet152(pretrained=True)
         modules = list(resnet.children())[:-3]  # 512*28*28
-        print(len(list(resnet.modules())))
         self.resnet = nn.Sequential(*modules)
         self.linear = nn.Linear(1024, 512)
 
@@ -147,7 +146,6 @@ class DecoderRNNWithAttention(nn.Module):
         h, c = self.init_hidden_state(features)
         # We won't decode at the <end> position, since we've finished generating as soon as we generate <end>
         # So, decoding lengths are actual lengths - 1
-        print(caption_lengths)
         decode_lengths = (caption_lengths - 1).tolist()
 
         # Create tensors to hold word predicion scores and alphas
