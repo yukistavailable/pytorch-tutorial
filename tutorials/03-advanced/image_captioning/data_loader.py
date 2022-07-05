@@ -106,10 +106,6 @@ class CocoDataset(data.Dataset):
         img_id = coco.anns[ann_id]['image_id']
         path = coco.loadImgs(img_id)[0]['file_name']
 
-        image = Image.open(os.path.join(self.root, path)).convert('RGB')
-        if self.transform is not None:
-            image = self.transform(image)
-
         # Convert caption (string) to word ids.
         tokens = nltk.tokenize.word_tokenize(str(caption).lower())
         caption = []
@@ -117,6 +113,14 @@ class CocoDataset(data.Dataset):
         caption.extend([vocab(token) for token in tokens])
         caption.append(vocab('<end>'))
         target = torch.Tensor(caption)
+
+        try:
+            image = Image.open(os.path.join(self.root, path)).convert('RGB')
+        except BaseException:
+            return None, target
+        if self.transform is not None:
+            image = self.transform(image)
+
         return image, target
 
     def __len__(self):
@@ -176,15 +180,22 @@ def collate_fn(data):
     data.sort(key=lambda x: len(x[1]), reverse=True)
     images, captions = zip(*data)
 
-    # Merge images (from tuple of 3D tensor to 4D tensor).
-    images = torch.stack(images, 0)
-
     # Merge captions (from tuple of 1D tensor to 2D tensor).
     lengths = [len(cap) for cap in captions]
     targets = torch.zeros(len(captions), max(lengths)).long()
     for i, cap in enumerate(captions):
         end = lengths[i]
         targets[i, :end] = cap[:end]
+
+    if images is None:
+        return None, targets, lengths
+    # Merge images (from tuple of 3D tensor to 4D tensor).
+    try:
+        images = torch.stack(images, 0)
+    except BaseException as e:
+        print(e)
+        return None, targets, lengths
+
     return images, targets, lengths
 
 

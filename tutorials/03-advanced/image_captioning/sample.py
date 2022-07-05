@@ -1,6 +1,6 @@
 import torch
 import matplotlib.pyplot as plt
-import numpy as np
+import numpy as p
 import argparse
 import pickle
 import os
@@ -16,7 +16,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def load_image(image_path, transform=None):
     image = Image.open(image_path).convert('RGB')
-    image = image.resize([224, 224], Image.LANCZOS)
+    image = image.resize([256, 256], Image.LANCZOS)
 
     if transform is not None:
         image = transform(image).unsqueeze(0)
