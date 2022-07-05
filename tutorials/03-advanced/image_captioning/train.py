@@ -93,10 +93,10 @@ def main(args):
                 features = encoder(images)
                 outputs, sorted_captions, alphas, sort_ind, decode_length = decoder(
                     features, captions, lengths)
-                outputs, _ = pack_padded_sequence(
+                outputs = pack_padded_sequence(
                     outputs, decode_length, batch_first=True)
                 targets = sorted_captions[:, 1:]
-                targets, _ = pack_padded_sequence(
+                targets = pack_padded_sequence(
                     targets, decode_length, batch_first=True)
                 loss = criterion(outputs, targets)
                 loss += alpha_c * ((1. - alphas.sum(dim=1)) ** 2).mean()
@@ -104,28 +104,6 @@ def main(args):
                 decoder.zero_grad()
                 encoder.zero_grad()
 
-                loss.backward()
-                optimizer.step()
-
-                # Print log info
-                if i % args.log_step == 0:
-                    print('Epoch [{}/{}], Step [{}/{}], Loss: {:.4f}, Perplexity: {:5.4f}' .format(
-                        epoch, args.num_epochs, i, total_step, loss.item(), np.exp(loss.item())))
-
-                # Save the model checkpoints
-                if (i + 1) % args.save_step == 0:
-                    torch.save(
-                        decoder.state_dict(),
-                        os.path.join(
-                            args.model_path,
-                            'decoder-{}-{}.ckpt'.format(epoch + 1, i + 1)))
-                    torch.save(
-                        encoder.state_dict(),
-                        os.path.join(
-                            args.model_path,
-                            'encoder-{}-{}.ckpt'.format(epoch + 1, i + 1)))
-                decoder.zero_grad()
-                encoder.zero_grad()
                 loss.backward()
                 optimizer.step()
 
