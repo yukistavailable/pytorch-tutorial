@@ -94,10 +94,10 @@ def main(args):
                 outputs, sorted_captions, alphas, sort_ind, decode_length = decoder(
                     features, captions, lengths)
                 outputs = pack_padded_sequence(
-                    outputs, decode_length, batch_first=True)
+                    outputs, decode_length, batch_first=True)[0]
                 targets = sorted_captions[:, 1:]
                 targets = pack_padded_sequence(
-                    targets, decode_length, batch_first=True)
+                    targets, decode_length, batch_first=True)[0]
                 loss = criterion(outputs, targets)
                 loss += alpha_c * ((1. - alphas.sum(dim=1)) ** 2).mean()
 
