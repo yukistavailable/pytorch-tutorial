@@ -137,6 +137,7 @@ class DecoderRNNWithAttention(nn.Module):
         # (batch_size, num_pixels, encoder_size)
         features = features.view(batch_size, -1, encoder_size)
         num_pixels = features.size(1)
+        lengths = torch.stack([torch.Tensor([length]) for length in lengths])
         caption_lengths, sort_ind = lengths.squeeze(
             1).sort(dim=0, descending=True)
         features = features[sort_ind]
