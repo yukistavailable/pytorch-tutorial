@@ -28,17 +28,17 @@ class EncoderCNNWithAttention(nn.Module):
         """Load the pretrained ResNet-152 and replace top fc layer."""
         super(EncoderCNNWithAttention, self).__init__()
         resnet = models.resnet152(pretrained=True)
-        modules = list(resnet.children())[:-4]  # 512*28*28
+        modules = list(resnet.children())[:-3]  # 512*28*28
+        print(len(list(resnet.modules())))
         self.resnet = nn.Sequential(*modules)
-        self.adaptive_pool = nn.AdaptiveAvgPool2d(
-            (pixel_num, pixel_num))  # 512*16*16
+        self.linear = nn.Linear(1024, 512)
 
     def forward(self, images):
         """Extract feature vectors from input images."""
         with torch.no_grad():
-            features = self.resnet(images)
-        features = self.adaptive_pool(features)
-        features = features.permute(0, 2, 3, 1)  # 16*16*512
+            features = self.resnet(images)  # 1*1024*16*16
+            features = features.permute(0, 2, 3, 1)  # 1*16*16*1024
+            features = self.linear(features)  # 1*16*16*512
         return features
 
 
@@ -105,6 +105,7 @@ class DecoderRNNWithAttention(nn.Module):
         self.max_seg_length = max_seq_length
         self.device = device
         self.vocab_size = vocab_size
+        self.encoder_size = encoder_size
         self.dropout = nn.Dropout(p=dropout)
         self.decode_step = nn.LSTMCell(
             embed_size + encoder_size,
@@ -146,6 +147,7 @@ class DecoderRNNWithAttention(nn.Module):
         h, c = self.init_hidden_state(features)
         # We won't decode at the <end> position, since we've finished generating as soon as we generate <end>
         # So, decoding lengths are actual lengths - 1
+        print(caption_lengths)
         decode_lengths = (caption_lengths - 1).tolist()
 
         # Create tensors to hold word predicion scores and alphas
@@ -182,19 +184,37 @@ class DecoderRNNWithAttention(nn.Module):
     def sample(self, features, states=None):
         """Generate captions for given image features using greedy search."""
         sampled_ids = []
-        inputs = features.unsqueeze(1)
+
+        # Flatten image
+        # (batch_size, num_pixels, encoder_size)
+        batch_size = features.size(0)
+        # (batch_size, num_pixels, encoder_size)
+        features = features.view(batch_size, -1, self.encoder_size)
+        num_pixels = features.size(1)
+
+        h, c = self.init_hidden_state(features)
+
+        # set <start> token
+        embeddings = self.embed(torch.LongTensor([[1]]).to(self.device))
         for i in range(self.max_seg_length):
-            # hiddens: (batch_size, 1, hidden_size)
-            hiddens, states = self.lstm(inputs, states)
-            # outputs:  (batch_size, vocab_size)
-            outputs = self.linear(hiddens.squeeze(1))
-            # predicted: (batch_size)
+            attention_weighted_encoding, alpha = self.attention(
+                features, h)
+            # gating scalar, (batch_size_t, encoder_dim)
+            gate = self.sigmoid(self.f_beta(h))
+            attention_weighted_encoding = gate * attention_weighted_encoding
+            if i == 0:
+                h, c = self.decode_step(
+                    torch.cat([embeddings[:, i, :], attention_weighted_encoding], dim=1),
+                    (h, c))  # (batch_size_t, decoder_dim)
+            else:
+                h, c = self.decode_step(
+                    torch.cat([h, attention_weighted_encoding], dim=1),
+                    (h, c))  # (batch_size_t, decoder_dim)
+            # (batch_size_t, vocab_size)
+            outputs = self.linear(self.dropout(h))
+
             _, predicted = outputs.max(1)
             sampled_ids.append(predicted)
-            # inputs: (batch_size, embed_size)
-            inputs = self.embed(predicted)
-            # inputs: (batch_size, 1, embed_size)
-            inputs = inputs.unsqueeze(1)
         # sampled_ids: (batch_size, max_seq_length)
         sampled_ids = torch.stack(sampled_ids, 1)
         return sampled_ids
