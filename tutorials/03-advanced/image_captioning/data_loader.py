@@ -145,7 +145,7 @@ def collate_val_fn(data):
     """
     # Sort a data list by caption length (descending order).
     data.sort(key=lambda x: len(x[1]), reverse=True)
-    images, captions = zip(*data)
+    images, captions, img_ids = zip(*data)
 
     # Merge images (from tuple of 3D tensor to 4D tensor).
     images = torch.stack(images, 0)
@@ -157,7 +157,7 @@ def collate_val_fn(data):
         end = lengths[i]
         targets[i, :end] = cap[:end]
     """
-    return images, captions
+    return images, captions, img_ids
 
 
 def collate_fn(data):
