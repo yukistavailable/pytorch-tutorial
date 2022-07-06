@@ -85,8 +85,9 @@ def main(args):
 
     total_bleu_score = 0
     count = 0
-    for i, (images, captions) in enumerate(data_loader):
+    for i, (images, captions, img_ids) in enumerate(data_loader):
         print(i)
+        print(img_ids)
 
         # Set mini-batch dataset
         images = images.to(device)
@@ -106,7 +107,8 @@ def main(args):
                 #c = [vocab.idx2word[int(_c)] for _c in c]
                 o = [str(int(_o)) for _o in o]
                 c = [[str(int(__c)) for __c in _c] for _c in c]
-                tmp += bleu_score([o], [c], 4)
+                tmp_score = bleu_score([o], [c], 4)
+                tmp += tmp_score
                 count += 1
         total_bleu_score += tmp
         print(tmp)

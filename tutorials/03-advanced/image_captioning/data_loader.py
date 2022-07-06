@@ -73,7 +73,7 @@ class CocoValDataset(data.Dataset):
             if len(target) < max_len:
                 target = target + [vocab('<end>')] * (max_len - len(target))
             padded_targets.append(torch.Tensor(target))
-        return image, torch.stack(padded_targets)
+        return image, torch.stack(padded_targets), img_id
 
     def __len__(self):
         return len(self.ids)
