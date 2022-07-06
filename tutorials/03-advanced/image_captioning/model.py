@@ -22,6 +22,17 @@ class EncoderCNN(nn.Module):
         features = self.bn(self.linear(features))
         return features
 
+    def fine_tune(self, fine_tune=True):
+        for p in self.resnet.parameters():
+            p.requires_grad = False
+        for c in list(self.resnet.children())[5:]:
+            for p in c.parameters():
+                p.requires_grad = fine_tune
+        for p in self.linear.parameters():
+            p.requires_grad = fine_tune
+        for p in self.bn.parameters():
+            p.requires_grad = fine_tune
+
 
 class EncoderCNNWithAttention(nn.Module):
     def __init__(self, pixel_num=16):
@@ -46,6 +57,8 @@ class EncoderCNNWithAttention(nn.Module):
         for c in list(self.resnet.children())[5:]:
             for p in c.parameters():
                 p.requires_grad = fine_tune
+        for p in self.linear.parameters():
+            p.requires_grad = fine_tune
 
 
 class Attention(nn.Module):

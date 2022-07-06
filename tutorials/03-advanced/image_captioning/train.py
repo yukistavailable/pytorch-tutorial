@@ -75,8 +75,11 @@ def main(args):
 
         # Loss and optimizer
         criterion = nn.CrossEntropyLoss()
-        params = list(decoder.parameters()) + \
-            list(encoder.linear.parameters())
+        if fine_tune_encoder:
+            params = list(decoder.parameters())
+        else:
+            params = list(decoder.parameters()) + \
+                list(encoder.linear.parameters())
         optimizer = torch.optim.Adam(params, lr=args.learning_rate)
         encoder_optimizer = torch.optim.Adam(
             params=filter(
@@ -133,6 +136,7 @@ def main(args):
     else:
         # Build the models
         encoder = EncoderCNN(args.embed_size).to(device)
+        encoder.fine_tune(fine_tune_encoder)
         decoder = DecoderRNN(
             args.embed_size,
             args.hidden_size,
@@ -166,9 +170,17 @@ def main(args):
 
         # Loss and optimizer
         criterion = nn.CrossEntropyLoss()
-        params = list(decoder.parameters()) + \
-            list(encoder.linear.parameters()) + list(encoder.bn.parameters())
+        if fine_tune_encoder:
+            params = list(decoder.parameters())
+        else:
+            params = list(decoder.parameters()) + \
+                list(encoder.linear.parameters()) + list(encoder.bn.parameters())
         optimizer = torch.optim.Adam(params, lr=args.learning_rate)
+        encoder_optimizer = torch.optim.Adam(
+            params=filter(
+                lambda p: p.requires_grad,
+                encoder.parameters()),
+            lr=args.learning_rate) if fine_tune_encoder else None
 
         # Train the models
         total_step = len(data_loader)
@@ -187,8 +199,14 @@ def main(args):
                 loss = criterion(outputs, targets)
                 decoder.zero_grad()
                 encoder.zero_grad()
+                optimizer.zero_grad()
+                if fine_tune_encoder:
+                    encoder_optimizer.zero_grad()
+
                 loss.backward()
                 optimizer.step()
+                if fine_tune_encoder:
+                    encoder_optimizer.step()
 
                 # Print log info
                 if i % args.log_step == 0:
