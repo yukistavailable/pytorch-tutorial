@@ -88,8 +88,6 @@ def main(args):
     count = 0
     img_bleu_score = {}
     for i, (images, captions, img_ids) in enumerate(data_loader):
-        if i > 1:
-            break
         print(i)
 
         # Set mini-batch dataset
@@ -128,12 +126,12 @@ if __name__ == '__main__':
     parser.add_argument(
         '--encoder_path',
         type=str,
-        default='models/encoder512-10-3000.ckpt',
+        default='models/encoder512-5-3000.ckpt',
         help='path for trained encoder')
     parser.add_argument(
         '--decoder_path',
         type=str,
-        default='models/decoder512-10-3000.ckpt',
+        default='models/decoder512-5-3000.ckpt',
         help='path for trained decoder')
     parser.add_argument(
         '--vocab_path',
