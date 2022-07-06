@@ -1,3 +1,4 @@
+import json
 import torch
 import nltk
 import matplotlib.pyplot as plt
@@ -85,9 +86,11 @@ def main(args):
 
     total_bleu_score = 0
     count = 0
+    img_bleu_score = {}
     for i, (images, captions, img_ids) in enumerate(data_loader):
+        if i > 1:
+            break
         print(i)
-        print(img_ids)
 
         # Set mini-batch dataset
         images = images.to(device)
@@ -99,7 +102,7 @@ def main(args):
             features = encoder(images)
             outputs = decoder.sample(features)
         tmp = 0
-        for o, c in zip(outputs, captions):
+        for o, c, img_id in zip(outputs, captions, img_ids):
             o = split_before_end(o)
             c = [split_before_end(_c) for _c in c]
             if o is not None and c is not None:
@@ -108,6 +111,7 @@ def main(args):
                 o = [str(int(_o)) for _o in o]
                 c = [[str(int(__c)) for __c in _c] for _c in c]
                 tmp_score = bleu_score([o], [c], 4)
+                img_bleu_score[img_id] = tmp_score
                 tmp += tmp_score
                 count += 1
         total_bleu_score += tmp
@@ -115,6 +119,8 @@ def main(args):
     print(total_bleu_score / count)
     with open(f'bleu_score.txt', 'a') as f:
         f.write(f'512-3000: {total_bleu_score / count}\n')
+    with open(f'img_bleu_score.json', 'w') as f:
+        json.dump(img_bleu_score, f)
 
 
 if __name__ == '__main__':
