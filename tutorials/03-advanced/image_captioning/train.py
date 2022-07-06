@@ -10,6 +10,7 @@ from model import EncoderCNN, DecoderRNN, EncoderCNNWithAttention, DecoderRNNWit
 from torch.nn.utils.rnn import pack_padded_sequence
 from torchvision import transforms
 
+fine_tune_encoder = True
 
 # Device configuration
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -40,6 +41,7 @@ def main(args):
     if args.with_attention:
         # Build the models
         encoder = EncoderCNNWithAttention(args.pixel_num).to(device)
+        encoder.fine_tune(fine_tune_encoder)
         decoder = DecoderRNNWithAttention(
             args.embed_size,
             args.hidden_size,
@@ -76,6 +78,11 @@ def main(args):
         params = list(decoder.parameters()) + \
             list(encoder.linear.parameters())
         optimizer = torch.optim.Adam(params, lr=args.learning_rate)
+        encoder_optimizer = torch.optim.Adam(
+            params=filter(
+                lambda p: p.requires_grad,
+                encoder.parameters()),
+            lr=args.learning_rate) if fine_tune_encoder else None
         alpha_c = args.alpha_c
 
         # Train the models
@@ -103,9 +110,14 @@ def main(args):
 
                 decoder.zero_grad()
                 encoder.zero_grad()
+                optimizer.zero_grad()
+                if fine_tune_encoder:
+                    encoder_optimizer.zero_grad()
 
                 loss.backward()
                 optimizer.step()
+                if fine_tune_encoder:
+                    encoder_optimizer.step()
 
                 # Print log info
                 if i % args.log_step == 0:

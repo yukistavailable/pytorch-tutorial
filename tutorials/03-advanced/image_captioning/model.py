@@ -40,6 +40,13 @@ class EncoderCNNWithAttention(nn.Module):
             features = self.linear(features)  # 1*16*16*512
         return features
 
+    def fine_tune(self, fine_tune=True):
+        for p in self.resnet.parameters():
+            p.requires_grad = False
+        for c in list(self.resnet.children())[5:]:
+            for p in c.parameters():
+                p.requires_grad = fine_tune
+
 
 class Attention(nn.Module):
     def __init__(self, encoder_dim, decoder_dim, attention_dim):
