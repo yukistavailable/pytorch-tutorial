@@ -109,7 +109,7 @@ class DecoderRNNWithAttention(nn.Module):
             encoder_size,
             device,
             attention_size=126,
-            max_seq_length=20,
+            max_seq_length=25,
             dropout=0.5
     ):
         """Set the hyper-parameters and build the layers."""
@@ -245,7 +245,7 @@ class DecoderRNN(nn.Module):
             hidden_size,
             vocab_size,
             num_layers,
-            max_seq_length=20):
+            max_seq_length=25):
         """Set the hyper-parameters and build the layers."""
         super(DecoderRNN, self).__init__()
         self.embed = nn.Embedding(vocab_size, embed_size)
